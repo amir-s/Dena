@@ -1,6 +1,6 @@
 {
   "name": "dena",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Async Javascript Scheduler",
   "main": "index.js",
   "scripts": {

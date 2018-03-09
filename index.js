@@ -22,14 +22,14 @@ const Dena = function (configs, worker) {
     const item = queue.shift();
     
     busy[free] = true;
-    await worker.apply(null, [configs[free], ...item.args]);
+    const returned = await worker.apply(null, [configs[free], ...item.args]);
     busy[free] = false;
-    item.done();
+    item.done(returned);
 
     trigger();
   }
 
-  return async function () {
+  return function () {
     const future = createPromise();
     queue.push({
       args: Array.from(arguments),

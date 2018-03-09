@@ -67,7 +67,7 @@ denaDownload('/five', 100); // this waits until /one is downloaded
 */
 ```
 
-Also, each `denaDownload` return a `Promise` which gets resolved once that instance is executed.
+Also, each `denaDownload` return a `Promise` which gets resolved to `download`'s return value once that instance is executed.
 
 API
 =====
