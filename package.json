@@ -1,0 +1,14 @@
+{
+  "name": "dena",
+  "version": "1.0.1",
+  "description": "Async Javascript Scheduler",
+  "main": "index.js",
+  "scripts": {
+  },
+  "author": "Amir Saboury",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/amir-s/Dena/issues"
+  },
+  "homepage": "https://github.com/amir-s/Dena#readme"
+}
