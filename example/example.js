@@ -1,4 +1,4 @@
-const Dena = require('../');
+const Dena = require('../dist');
 
 let simulatedDownload = function (delay) {
   return new Promise((acc, rej) => setTimeout(acc, delay))
