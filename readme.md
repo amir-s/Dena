@@ -1,104 +1,105 @@
-Dena
-============
+# Dena
 
+A tiny async task scheduler for JavaScript/TypeScript. Queue async functions against a pool of limited resources — Dena ensures only as many tasks run concurrently as there are resources available.
 
-Dena is a dead simple scheduler to queue and run async javascript functions.
+## Install
 
-It turns your async functions into async functions that schedule themselves to use limited resources, so at any given time, only limited number of async tasks are being executed.
-
-Installation
-============
 ```
 npm install dena
 ```
 
-Build (for local development)
-============
-```
-npm install
-npm run build
-```
-Run `npm run build` before executing `example/example.js`.
+## Quick Start
 
+```js
+const Dena = require("dena");
 
-Example
-============
-Assume you are downloading some URLs, but you need a token to access them. You have limited number of tokens and you can only download one page at a time with one token.
+// You have 3 tokens, but 5 downloads to make.
+// Dena manages the queue so only 3 run at a time.
 
-```javascript
-const Dena = require('dena');
+const tokens = ["token_a", "token_b", "token_c"];
 
-let simulatedDownload = function (delay) {
-  return new Promise((acc, rej) => setTimeout(acc, delay))
-}
+const download = async (token, url) => {
+  const res = await fetch(`${url}?token=${token}`);
+  return res.json();
+};
 
-let download = async function (token, path, delay) {
-  console.log(`[ ] Started downloading ${path}?token=${token}`);
-  
-  await simulatedDownload(delay);
+const scheduledDownload = Dena(tokens, download);
 
-  console.log(`[x] Finished downloading ${path}?token=${token}`);
-}
+// Dena assigns a free token automatically — just pass the remaining args:
+const result = await scheduledDownload("/api/users");
 ```
 
-You can use Dena, to convert your `download` function into a smarter `download`. Dena dynamically assigns a token to your function from a pool of tokens and call your function.
-Dena assumes the first argument of your function is always the configuration object that needs to be selected from the pool.
+## How It Works
 
-```javascript
-let simulatedDownload = function (delay) {
-  return new Promise((acc, rej) => setTimeout(acc, delay))
-}
+1. You provide a **resource pool** (an array of configs/tokens/connections — anything).
+2. You provide an **async worker function** whose first argument is a resource from the pool.
+3. Dena returns a new function with the same signature _minus_ the first argument. When you call it, Dena waits for a free resource, injects it, and runs your worker.
 
-let download = async function (token, path, delay) {
-  console.log(`[ ] Started downloading ${path}?token=${token}`);
-  
-  await simulatedDownload(delay);
+```
+Dena(pool, worker) → scheduledWorker
+```
 
-  console.log(`[x] Finished downloading ${path}?token=${token}`);
-}
+- If a resource is free, the task runs immediately.
+- If all resources are busy, the task is queued and runs as soon as one frees up.
+- Each call returns a `Promise` that resolves with the worker's return value.
 
+## Example
 
-let tokens = ['1_1a2b3c', '2_4d5e6f', '3_7g8h9i'];
-let denaDownload = Dena(tokens, download);
+```js
+const Dena = require("dena");
 
-// notice how the first argument is not needed.
-// Dena assings a free token to your function dynamically
-denaDownload('/one', 1000);
-denaDownload('/two', 500);
-denaDownload('/three', 2000);
-denaDownload('/four', 500); // this waits until /two is downloaded
-denaDownload('/five', 100); // this waits until /one is downloaded
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const download = async (token, path, ms) => {
+  console.log(`[ ] downloading ${path} (token=${token})`);
+  await delay(ms);
+  console.log(`[x] finished   ${path} (token=${token})`);
+};
+
+const tokens = ["t1", "t2", "t3"];
+const scheduledDownload = Dena(tokens, download);
+
+scheduledDownload("/one", 1000);
+scheduledDownload("/two", 500);
+scheduledDownload("/three", 2000);
+scheduledDownload("/four", 500); // queued — waits for a free token
+scheduledDownload("/five", 100); // queued
 
 /*
-  [ ] Started downloading /one?token=1_1a2b3c
-  [ ] Started downloading /two?token=2_4d5e6f
-  [ ] Started downloading /three?token=3_7g8h9i
-  [x] Finished downloading /two?token=2_4d5e6f
-  [ ] Started downloading /four?token=2_4d5e6f
-  [x] Finished downloading /one?token=1_1a2b3c
-  [ ] Started downloading /five?token=1_1a2b3c
-  [x] Finished downloading /four?token=2_4d5e6f
-  [x] Finished downloading /five?token=1_1a2b3c
-  [x] Finished downloading /three?token=3_7g8h9i
+  [ ] downloading /one   (token=t1)
+  [ ] downloading /two   (token=t2)
+  [ ] downloading /three (token=t3)
+  [x] finished   /two   (token=t2)
+  [ ] downloading /four  (token=t2)
+  [x] finished   /one   (token=t1)
+  [ ] downloading /five  (token=t1)
+  [x] finished   /four  (token=t2)
+  [x] finished   /five  (token=t1)
+  [x] finished   /three (token=t3)
 */
 ```
 
-Also, each `denaDownload` return a `Promise` which gets resolved to `download`'s return value once that instance is executed.
+## API
 
-API
-=====
+```ts
+Dena<TConfig, TArgs, TResult>(
+  pool: TConfig[],
+  worker: (config: TConfig, ...args: TArgs) => Promise<TResult>
+): (...args: TArgs) => Promise<TResult>
 ```
-Dena(configurationPool, fn);
-```
 
-`configurationPool`: `Array` of objects, each element will be fed into `fn` as its first argument.
+| Parameter | Description |
+|-----------|-------------|
+| `pool` | Array of resources. Each element is passed as the first argument to `worker` when a task is dispatched. The pool size determines the concurrency limit. |
+| `worker` | Async function to schedule. Its first parameter receives a resource from `pool`; the rest are the arguments you pass to the returned function. |
 
-`fn`: `async function`. `fn` has to return a `Promise`, so Dena knows when the execution is done.
+**Returns** a function with the same signature as `worker` minus the first parameter. Each call returns a `Promise` that resolves with the worker's return value.
 
+## TypeScript
 
-Return Value:
-`async fn`: Async function that executes `fn` with dynamically assigned configuration from `configurationPool`.
+Full type definitions are included with the package — no extra `@types` install needed.
 
-TypeScript
-=====
-Type definitions are published with the package.
+## License
+
+MIT
+
