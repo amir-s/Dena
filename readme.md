@@ -6,12 +6,28 @@ Dena is a dead simple scheduler to queue and run async javascript functions.
 
 It turns your async functions into async functions that schedule themselves to use limited resources, so at any given time, only limited number of async tasks are being executed.
 
+Installation
+============
+```
+npm install dena
+```
+
+Build (for local development)
+============
+```
+npm install
+npm run build
+```
+Run `npm run build` before executing `example/example.js`.
+
 
 Example
 ============
 Assume you are downloading some URLs, but you need a token to access them. You have limited number of tokens and you can only download one page at a time with one token.
 
 ```javascript
+const Dena = require('dena');
+
 let simulatedDownload = function (delay) {
   return new Promise((acc, rej) => setTimeout(acc, delay))
 }
@@ -83,5 +99,6 @@ Dena(configurationPool, fn);
 Return Value:
 `async fn`: Async function that executes `fn` with dynamically assigned configuration from `configurationPool`.
 
-
-
+TypeScript
+=====
+Type definitions are published with the package.

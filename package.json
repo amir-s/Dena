@@ -2,13 +2,31 @@
   "name": "dena",
   "version": "1.0.3",
   "description": "Async Javascript Scheduler",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "readme.md"
+  ],
   "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build",
+    "test": "npm run build && node test/dena.test.js"
   },
   "author": "Amir Saboury",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/amir-s/Dena/issues"
   },
-  "homepage": "https://github.com/amir-s/Dena#readme"
+  "homepage": "https://github.com/amir-s/Dena#readme",
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
 }
