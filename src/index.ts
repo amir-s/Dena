@@ -1,4 +1,5 @@
 type DoneFn<TResult> = (value: TResult) => void;
+type FailFn = (error: unknown) => void;
 
 type PromiseLikeValue<TResult> = TResult | Promise<TResult>;
 
@@ -14,14 +15,18 @@ type Scheduler<TArgs extends unknown[], TResult> = (
 const createPromise = <TResult>(): {
   promise: Promise<TResult>;
   done: DoneFn<TResult>;
+  fail: FailFn;
 } => {
   let done: DoneFn<TResult>;
-  const promise = new Promise<TResult>((resolve) => {
+  let fail: FailFn;
+  const promise = new Promise<TResult>((resolve, reject) => {
     done = resolve;
+    fail = reject;
   });
   return {
     promise,
     done: done!,
+    fail: fail!,
   };
 };
 
@@ -29,7 +34,7 @@ const Dena = <TConfig, TArgs extends unknown[], TResult>(
   configs: TConfig[],
   worker: Worker<TConfig, TArgs, TResult>
 ): Scheduler<TArgs, TResult> => {
-  const queue: Array<{ args: TArgs; done: DoneFn<TResult> }> = [];
+  const queue: Array<{ args: TArgs; done: DoneFn<TResult>; fail: FailFn }> = [];
   const busy = configs.map(() => false);
 
   const trigger = async (): Promise<void> => {
@@ -42,9 +47,14 @@ const Dena = <TConfig, TArgs extends unknown[], TResult>(
     if (!item) return;
 
     busy[free] = true;
-    const returned = await worker(configs[free], ...item.args);
-    busy[free] = false;
-    item.done(returned);
+    try {
+      const returned = await worker(configs[free], ...item.args);
+      item.done(returned);
+    } catch (error) {
+      item.fail(error);
+    } finally {
+      busy[free] = false;
+    }
 
     trigger();
   };
@@ -54,6 +64,7 @@ const Dena = <TConfig, TArgs extends unknown[], TResult>(
     queue.push({
       args,
       done: future.done,
+      fail: future.fail,
     });
     trigger();
 
